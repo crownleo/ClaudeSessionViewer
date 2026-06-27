@@ -1,0 +1,1352 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Claude Code Sessions</title>
+<style>
+:root {
+  --bg:       #ffffff;
+  --bg-2:     #faf9f5;
+  --bg-3:     #f0eee6;
+  --border:   #e5e2d9;
+  --text:     #1f1e1d;
+  --text-2:   #5f5d57;
+  --text-3:   #97948c;
+  --accent:   #d97757;
+  --accent-h: #c15f3c;
+  --accent-bg:#f7ede8;
+  --danger:   #c0392b;
+  --danger-bg:#fbeeec;
+  --green:    #4f7a4d;
+  --green-bg: #e8f0e6;
+  --shadow:   0 1px 3px rgba(60,50,35,.06),0 1px 2px rgba(60,50,35,.04);
+  --shadow-md:0 4px 6px -1px rgba(60,50,35,.08),0 2px 4px -2px rgba(60,50,35,.08);
+  --r:8px; --r-sm:4px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans SC',sans-serif;
+  background:var(--bg-3);color:var(--text);
+  height:100vh;display:flex;flex-direction:column;overflow:hidden;font-size:14px;
+}
+
+/* ── Header ── */
+.hdr{
+  background:var(--bg);border-bottom:1px solid var(--border);
+  padding:0 16px;height:52px;display:flex;align-items:center;gap:12px;
+  flex-shrink:0;box-shadow:var(--shadow);z-index:10;
+}
+.hdr-logo{display:flex;align-items:center;gap:8px;font-weight:700;font-size:15px;white-space:nowrap;}
+.hdr-logo svg{width:22px;height:22px;color:var(--accent);}
+.hdr-search{flex:1;max-width:380px;position:relative;}
+.hdr-search input{
+  width:100%;padding:6px 12px 6px 32px;border:1px solid var(--border);border-radius:20px;
+  background:var(--bg-3);color:var(--text);font-size:13px;outline:none;
+  transition:border-color .15s,background .15s;
+}
+.hdr-search input:focus{border-color:var(--accent);background:var(--bg);}
+.hdr-search .si{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text-3);width:14px;height:14px;pointer-events:none;}
+.hdr-right{margin-left:auto;display:flex;align-items:center;gap:8px;}
+
+/* ── Buttons ── */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:var(--r-sm);font-size:13px;font-weight:500;cursor:pointer;border:none;outline:none;transition:background .15s,opacity .15s;}
+.btn svg{width:14px;height:14px;}
+.btn-primary{background:var(--accent);color:#fff;}
+.btn-primary:hover{background:var(--accent-h);}
+.btn-ghost{background:transparent;color:var(--text-2);border:1px solid var(--border);}
+.btn-ghost:hover{background:var(--bg-3);}
+.btn-danger{background:var(--danger);color:#fff;}
+.btn-danger:hover{opacity:.9;}
+.trash-count{background:var(--accent);color:#fff;font-size:10px;font-weight:700;min-width:16px;height:16px;border-radius:8px;padding:0 4px;display:inline-flex;align-items:center;justify-content:center;}
+/* trash list */
+.trash-item{display:flex;align-items:center;gap:10px;padding:10px;border:1px solid var(--border);border-radius:var(--r-sm);margin:6px 4px;background:var(--bg-2);}
+.trash-info{flex:1;min-width:0;}
+.trash-title{font-size:13px;font-weight:500;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.trash-meta{font-size:11px;color:var(--text-3);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.trash-acts{display:flex;gap:6px;flex-shrink:0;}
+.trash-empty{text-align:center;color:var(--text-3);font-size:13px;padding:28px;}
+
+/* ── Main 3-col ── */
+.main{display:flex;flex:1;overflow:hidden;}
+
+/* ── Projects panel ── */
+.p-proj{width:200px;min-width:160px;background:var(--bg);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;}
+.panel-hdr{padding:12px 14px 6px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-3);flex-shrink:0;}
+.proj-list{overflow-y:auto;flex:1;padding:4px 0 8px;}
+.proj-item{
+  display:flex;align-items:center;gap:8px;padding:7px 14px;cursor:pointer;
+  color:var(--text-2);font-size:13px;position:relative;transition:background .1s;
+}
+.proj-item:hover{background:var(--bg-3);color:var(--text);}
+.proj-item.active{background:var(--accent-bg);color:var(--accent);font-weight:600;}
+.proj-item.active::before{content:'';position:absolute;left:0;top:6px;bottom:6px;width:3px;background:var(--accent);border-radius:0 2px 2px 0;}
+.proj-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.proj-cnt{font-size:11px;color:var(--text-3);background:var(--bg-3);padding:1px 6px;border-radius:10px;flex-shrink:0;}
+.proj-item.active .proj-cnt{background:var(--accent-bg);color:var(--accent);}
+
+/* ── Sessions panel ── */
+.p-sess{width:300px;min-width:240px;background:var(--bg-2);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;}
+.sess-filter{padding:10px 10px 8px;flex-shrink:0;border-bottom:1px solid var(--border);position:relative;}
+.sess-filter input{
+  width:100%;padding:6px 10px 6px 28px;border:1px solid var(--border);
+  border-radius:var(--r-sm);background:var(--bg);color:var(--text);font-size:12px;outline:none;
+}
+.sess-filter input:focus{border-color:var(--accent);}
+.sess-filter .si{position:absolute;left:20px;top:50%;transform:translateY(-50%);color:var(--text-3);width:13px;height:13px;pointer-events:none;}
+.sess-list{overflow-y:auto;flex:1;padding:4px 0;}
+.sess-item{
+  padding:10px 10px 9px;cursor:pointer;border-radius:var(--r-sm);
+  margin:2px 6px;position:relative;transition:background .1s;border:1px solid transparent;
+}
+.sess-item:hover{background:var(--bg);border-color:var(--border);}
+.sess-item.active{background:var(--bg);border-color:var(--accent);box-shadow:0 0 0 1px var(--accent);}
+.sess-title{
+  font-size:13px;font-weight:500;color:var(--text);margin-bottom:5px;
+  overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;line-height:1.4;
+  padding-right:44px;
+}
+.sess-meta{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.meta-tag{font-size:11px;color:var(--text-3);display:flex;align-items:center;gap:2px;}
+.badge{display:inline-flex;align-items:center;gap:3px;padding:1px 6px;border-radius:10px;font-size:10px;font-weight:600;}
+.badge-active{background:var(--green-bg);color:var(--green);}
+.badge-agent{background:#fef3c7;color:#b45309;}
+.sess-actions{position:absolute;right:6px;top:8px;display:none;gap:3px;}
+.sess-item:hover .sess-actions,.sess-item.active .sess-actions{display:flex;}
+.act-btn{
+  width:24px;height:24px;border-radius:var(--r-sm);border:none;
+  background:var(--bg-3);color:var(--text-2);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;transition:background .1s,color .1s;padding:0;
+}
+.act-btn svg{width:13px;height:13px;}
+.act-btn:hover{background:var(--border);color:var(--text);}
+.act-btn.del:hover{background:var(--danger-bg);color:var(--danger);}
+
+/* ── Chat panel ── */
+.p-chat{flex:1;background:var(--bg-3);display:flex;flex-direction:column;overflow:hidden;}
+.chat-hdr{
+  background:var(--bg);border-bottom:1px solid var(--border);
+  padding:10px 18px;display:flex;align-items:center;gap:12px;flex-shrink:0;
+}
+.chat-title{font-size:14px;font-weight:600;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.chat-stats{display:flex;align-items:center;gap:10px;font-size:11px;color:var(--text-3);flex-shrink:0;}
+.chat-stat{display:flex;align-items:center;gap:3px;}
+.chat-msgs{flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:14px;}
+
+/* ── Messages ── */
+.msg-wrap{display:flex;flex-direction:column;max-width:88%;}
+.msg-wrap.user{align-self:flex-end;align-items:flex-end;}
+.msg-wrap.assistant{align-self:flex-start;align-items:flex-start;}
+.msg-role{font-size:11px;color:var(--text-3);margin-bottom:3px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;}
+.msg-bubble{
+  padding:10px 14px;border-radius:var(--r);font-size:13px;line-height:1.65;
+  word-break:break-word;max-width:100%;
+}
+.msg-wrap.user .msg-bubble{
+  background:var(--accent-bg);border:1px solid #efddd2;
+  border-radius:var(--r) var(--r-sm) var(--r) var(--r);
+}
+.msg-wrap.assistant .msg-bubble{
+  background:var(--bg);border:1px solid var(--border);box-shadow:var(--shadow);
+  border-radius:var(--r-sm) var(--r) var(--r) var(--r);
+}
+.msg-footer{margin-top:4px;font-size:11px;color:var(--text-3);display:flex;gap:8px;}
+
+/* text in bubbles */
+.msg-bubble .txt{white-space:pre-wrap;word-break:break-word;}
+.msg-bubble code{background:var(--bg-3);padding:1px 4px;border-radius:3px;font-family:'SF Mono',Consolas,monospace;font-size:11.5px;border:1px solid var(--border);}
+.msg-bubble pre{background:var(--bg-3);border:1px solid var(--border);border-radius:var(--r-sm);padding:10px 12px;overflow-x:auto;margin:6px 0;font-family:'SF Mono',Consolas,monospace;font-size:12px;line-height:1.5;}
+.msg-bubble pre code{background:none;border:none;padding:0;white-space:pre;}
+.msg-bubble strong{font-weight:600;}
+.msg-bubble em{font-style:italic;}
+.msg-bubble h1,.msg-bubble h2,.msg-bubble h3{font-weight:600;margin:8px 0 4px;}
+.msg-bubble h1{font-size:16px;}
+.msg-bubble h2{font-size:14px;}
+.msg-bubble h3{font-size:13px;}
+.msg-bubble ul,.msg-bubble ol{padding-left:20px;margin:4px 0;}
+.msg-bubble li{margin:2px 0;}
+.msg-bubble a{color:var(--accent);text-decoration:none;}
+.msg-bubble a:hover{text-decoration:underline;}
+.msg-bubble blockquote{border-left:3px solid var(--border);padding-left:10px;color:var(--text-2);margin:4px 0;}
+.msg-bubble hr{border:none;border-top:1px solid var(--border);margin:8px 0;}
+
+/* ── Tool blocks ── */
+.tool-block{margin:5px 0;border:1px solid var(--border);border-radius:var(--r-sm);overflow:hidden;background:var(--bg-3);}
+.tool-hdr{
+  padding:5px 10px;background:var(--bg-2);display:flex;align-items:center;gap:6px;
+  cursor:pointer;font-size:12px;color:var(--text-2);border-bottom:1px solid transparent;
+  user-select:none;transition:background .1s;
+}
+.tool-hdr:hover{background:var(--bg-3);}
+.tool-hdr.open{border-bottom-color:var(--border);}
+.tool-nm{font-weight:600;color:var(--accent);font-family:'SF Mono',Consolas,monospace;font-size:11px;}
+.tool-arr{margin-left:auto;color:var(--text-3);font-size:10px;transition:transform .15s;}
+.tool-hdr.open .tool-arr{transform:rotate(90deg);}
+.tool-body{display:none;padding:8px 10px;font-family:'SF Mono',Consolas,monospace;font-size:11.5px;color:var(--text-2);white-space:pre-wrap;word-break:break-all;max-height:240px;overflow-y:auto;}
+.tool-body.vis{display:block;}
+.tool-result-hdr{color:var(--text-3);}
+/* thinking block */
+.think-block{background:#f6f1ea;border-color:#e8ddcf;}
+.think-block .tool-hdr{background:#f1e9dd;}
+.think-block .tool-hdr:hover{background:#ece1d1;}
+.think-block .tool-hdr span:not(.tool-arr){color:var(--accent)!important;}
+.think-body{color:#7a6a55;font-family:inherit;font-style:italic;white-space:pre-wrap;}
+/* tool-result card (left aligned, full width) */
+.msg-wrap.toolresult{align-self:stretch;align-items:flex-start;max-width:100%;}
+.msg-wrap.toolresult .msg-role{color:#8a7d5f;}
+.tr-bubble{background:var(--bg-2);border:1px dashed var(--border);width:100%;}
+
+/* ── Empty / welcome states ── */
+.empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--text-3);gap:10px;text-align:center;padding:40px;}
+.empty svg{width:40px;height:40px;opacity:.25;}
+.empty h3{font-size:15px;color:var(--text-2);font-weight:500;}
+.empty p{font-size:12px;line-height:1.6;}
+.welcome{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;padding:40px;text-align:center;background:linear-gradient(150deg,#fdf8f3 0%,#f5ece2 100%);}
+.welcome-emoji{font-size:64px;line-height:1;margin-bottom:16px;filter:drop-shadow(0 4px 8px rgba(180,120,80,.15));}
+.welcome h2{font-size:22px;font-weight:700;color:var(--text);margin-bottom:6px;letter-spacing:-.3px;}
+.welcome>.sub{font-size:12px;color:var(--text-3);margin-bottom:24px;letter-spacing:.01em;}
+.welcome-card{background:#fff;border-radius:16px;padding:28px 32px;max-width:320px;width:100%;border:1px solid rgba(220,210,195,.7);box-shadow:0 2px 12px rgba(160,110,70,.08);}
+.welcome-card-icon{font-size:40px;margin-bottom:12px;line-height:1;}
+.welcome-card p{font-size:13px;color:var(--text-2);line-height:1.7;margin-bottom:4px;}
+.welcome-card p code{background:var(--accent-bg);color:var(--accent-h);padding:1px 6px;border-radius:4px;font-family:'SF Mono',Consolas,monospace;font-size:11.5px;}
+.welcome-card-hint{font-size:11px;color:var(--text-3);margin-top:8px;}
+.welcome-footer{margin-top:20px;font-size:11px;color:var(--text-3);line-height:1.8;}
+
+/* ── Modal ── */
+.overlay{display:none;position:fixed;inset:0;background:rgba(15,23,42,.4);z-index:100;align-items:center;justify-content:center;backdrop-filter:blur(2px);}
+.overlay.vis{display:flex;}
+.modal{background:var(--bg);border-radius:var(--r);box-shadow:var(--shadow-md),0 20px 25px -5px rgba(0,0,0,.1);padding:24px;width:420px;max-width:calc(100vw - 32px);}
+.modal h3{font-size:16px;font-weight:700;margin-bottom:6px;}
+.modal p{font-size:13px;color:var(--text-2);margin-bottom:16px;line-height:1.5;}
+.modal-inp{width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:var(--r-sm);font-size:13px;outline:none;color:var(--text);margin-bottom:4px;}
+.modal-inp:focus{border-color:var(--accent);}
+.modal-hint{font-size:11px;color:var(--text-3);margin-bottom:16px;}
+.modal-footer{display:flex;justify-content:flex-end;gap:8px;}
+
+/* ── Search overlay ── */
+.srch-overlay{
+  display:none;position:fixed;top:52px;left:50%;transform:translateX(-50%);
+  width:620px;max-width:calc(100vw - 32px);max-height:calc(100vh - 80px);
+  background:var(--bg);border:1px solid var(--border);border-radius:var(--r);
+  box-shadow:var(--shadow-md);z-index:50;overflow:hidden;flex-direction:column;
+}
+.srch-overlay.vis{display:flex;}
+.srch-hdr{padding:10px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--text-3);flex-shrink:0;}
+.srch-results{overflow-y:auto;flex:1;}
+.srch-item{padding:11px 16px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .1s;}
+.srch-item:hover{background:var(--bg-3);}
+.srch-proj{font-size:10px;color:var(--text-3);margin-bottom:2px;text-transform:uppercase;letter-spacing:.05em;}
+.srch-title{font-size:13px;font-weight:500;color:var(--text);margin-bottom:4px;}
+.srch-excerpt{font-size:12px;color:var(--text-2);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;line-height:1.5;}
+.srch-excerpt mark{background:#fef08a;color:var(--text);border-radius:2px;padding:0 1px;}
+.srch-none{padding:24px;text-align:center;font-size:13px;color:var(--text-3);}
+
+/* ── Stats bar ── */
+.stats-bar{background:var(--bg);border-top:1px solid var(--border);padding:6px 18px;display:flex;gap:16px;font-size:11px;color:var(--text-3);flex-shrink:0;}
+
+/* ── Misc ── */
+.spinner{width:18px;height:18px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .5s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.loading{display:flex;align-items:center;justify-content:center;gap:10px;padding:24px;color:var(--text-3);font-size:13px;}
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+::-webkit-scrollbar-thumb:hover{background:var(--text-3);}
+.sep{color:var(--text-3);}
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<header class="hdr">
+  <div class="hdr-logo">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/>
+      <path d="M8 12h8M12 8v8" stroke-linecap="round"/>
+    </svg>
+    Claude Sessions
+  </div>
+
+  <div class="hdr-search">
+    <svg class="si" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+    <input id="globalSearch" type="text" placeholder="跨项目搜索…" autocomplete="off">
+  </div>
+
+  <div class="hdr-right">
+    <button class="btn btn-ghost" id="btnTrash" title="回收站" style="display:none;position:relative;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+      回收站<span id="trashCount" class="trash-count" style="display:none;"></span>
+    </button>
+    <button class="btn btn-primary" id="btnOpen">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+      选择 .claude 目录
+    </button>
+  </div>
+</header>
+
+<!-- Search results overlay -->
+<div class="srch-overlay" id="srchOverlay">
+  <div class="srch-hdr">
+    <span id="srchInfo">搜索结果</span>
+    <button class="btn btn-ghost" style="padding:3px 10px;font-size:12px;" onclick="closeSrch()">关闭</button>
+  </div>
+  <div class="srch-results" id="srchResults"></div>
+</div>
+
+<!-- Main -->
+<div class="main">
+
+  <!-- Projects -->
+  <div class="p-proj">
+    <div class="panel-hdr">Projects</div>
+    <div class="proj-list" id="projList">
+      <div class="welcome" style="padding:20px;gap:8px;">
+        <div style="font-size:12px;color:var(--text-3);text-align:center;line-height:1.6;">点击右上角<br>选择 .claude 目录</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sessions -->
+  <div class="p-sess">
+    <div class="sess-filter">
+      <svg class="si" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <input id="sessFilter" type="text" placeholder="过滤会话…" oninput="filterSessions()">
+    </div>
+    <div class="sess-list" id="sessList">
+      <div class="empty" style="padding-top:48px;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg>
+        <p>选择左侧项目</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chat -->
+  <div class="p-chat" id="chatPanel">
+    <div class="welcome" id="chatWelcome">
+      <div class="welcome-emoji">💬</div>
+      <h2>Claude Code Sessions</h2>
+      <div class="sub">本地读写 · 不联网 · 不上传任何内容</div>
+      <div class="welcome-card">
+        <div class="welcome-card-icon">📂</div>
+        <p>点击右上角<strong>「选择 .claude 目录」</strong>，选择你的 <code>~/.claude</code> 文件夹</p>
+        <p class="welcome-card-hint">Windows：<code>C:\Users\用户名\.claude</code><br>macOS / Linux：<code>~/.claude</code></p>
+      </div>
+      <div class="welcome-footer">支持查看：对话记录 · Token 用量 · 工具调用 · 思考过程<br>需要 Chrome 或 Edge 浏览器（File System Access API）</div>
+    </div>
+    <div id="chatView" style="display:none;flex:1;flex-direction:column;overflow:hidden;">
+      <div class="chat-hdr">
+        <div class="chat-title" id="chatTitle"></div>
+        <div class="chat-stats" id="chatStats"></div>
+        <button class="btn btn-ghost" style="padding:5px 10px;font-size:12px;" id="btnExport">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          导出 MD
+        </button>
+      </div>
+      <div class="chat-msgs" id="chatMsgs"></div>
+      <div class="stats-bar" id="statsBar"></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Rename modal -->
+<div class="overlay" id="renameModal">
+  <div class="modal">
+    <h3>重命名会话</h3>
+    <p>输入新的文件名（不含 .jsonl 扩展名）：</p>
+    <input class="modal-inp" id="renameInput" type="text" placeholder="新文件名">
+    <div class="modal-hint">原文件：<span id="renameOld" style="font-family:monospace;font-size:11px;"></span></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('renameModal')">取消</button>
+      <button class="btn btn-primary" onclick="doRename()">重命名</button>
+    </div>
+  </div>
+</div>
+
+<!-- Delete modal -->
+<div class="overlay" id="deleteModal">
+  <div class="modal">
+    <h3>移到回收站</h3>
+    <p>将以下会话移入回收站，之后可在回收站还原或彻底删除：</p>
+    <p style="background:var(--accent-bg);color:var(--accent-h);padding:8px 12px;border-radius:var(--r-sm);font-size:13px;" id="deleteTitle"></p>
+    <div class="modal-footer" style="margin-top:16px;">
+      <button class="btn btn-ghost" onclick="closeModal('deleteModal')">取消</button>
+      <button class="btn btn-primary" onclick="doDelete()">移到回收站</button>
+    </div>
+  </div>
+</div>
+
+<!-- Trash modal -->
+<div class="overlay" id="trashModal">
+  <div class="modal" style="width:560px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+      <h3 style="margin:0;">回收站</h3>
+      <button class="btn btn-ghost" style="padding:4px 10px;font-size:12px;" id="btnEmptyTrash">清空回收站</button>
+    </div>
+    <p style="margin-bottom:12px;">这些文件已从项目移出，可还原回原项目或彻底删除。</p>
+    <div id="trashList" style="max-height:50vh;overflow-y:auto;margin:-4px -4px 12px;"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('trashModal')">关闭</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════════════
+//  STORE  — File System Access API
+// ══════════════════════════════════════════════════════════════════
+const Store = {
+  root: null,       // FileSystemDirectoryHandle for .claude/
+  projDir: null,    // FileSystemDirectoryHandle for .claude/projects/
+  TRASH_DIR: '.session-manager-trash',
+  MANIFEST: '_manifest.json',
+
+  async open() {
+    this.root = await window.showDirectoryPicker({ mode: 'readwrite' });
+    // Support picking .claude/ directly or its parent
+    try {
+      this.projDir = await this.root.getDirectoryHandle('projects');
+    } catch {
+      // Maybe they picked the projects/ folder itself
+      this.projDir = this.root;
+    }
+  },
+
+  async getActiveSessions() {
+    const ids = new Set();
+    try {
+      const sh = await this.root.getDirectoryHandle('sessions');
+      for await (const [name, fh] of sh.entries()) {
+        if (!name.endsWith('.json')) continue;
+        try {
+          const txt = await (await fh.getFile()).text();
+          const d = JSON.parse(txt);
+          if (d.sessionId) ids.add(d.sessionId);
+        } catch {}
+      }
+    } catch {}
+    return ids;
+  },
+
+  // Read just the first non-empty line of a file (cheap; avoids loading huge files)
+  async firstRecord(fh) {
+    const file = await fh.getFile();
+    // Read first 8KB — enough for the first JSONL line
+    const slice = file.slice(0, 8192);
+    const txt = await slice.text();
+    const nl = txt.indexOf('\n');
+    const line = (nl >= 0 ? txt.slice(0, nl) : txt).trim();
+    if (!line) return null;
+    try { return JSON.parse(line); } catch { return null; }
+  },
+
+  async listProjects() {
+    const active = await this.getActiveSessions();
+    const list = [];
+    for await (const [name, handle] of this.projDir.entries()) {
+      if (handle.kind !== 'directory') continue;
+      if (name === Store.TRASH_DIR || name.startsWith('.')) continue; // skip recycle bin
+      let cwd = null, count = 0, hasActive = false;
+      for await (const [fname, fh] of handle.entries()) {
+        if (!fname.endsWith('.jsonl')) continue;
+        count++;
+        // sessionId + cwd both live on the first record — one cheap read covers both
+        const r = await this.firstRecord(fh);
+        if (r) {
+          if (!cwd && r.cwd) cwd = r.cwd;
+          if (!hasActive && r.sessionId && active.has(r.sessionId)) hasActive = true;
+        }
+      }
+      const displayName = cwd
+        ? cwd.replace(/\\/g, '/').split('/').filter(Boolean).pop() || name
+        : name;
+      list.push({ dirName: name, displayName, cwd: cwd || name, count, hasActive, handle });
+    }
+    list.sort((a, b) => a.displayName.localeCompare(b.displayName, 'zh'));
+    return list;
+  },
+
+  async listSessions(dirName) {
+    const active = await this.getActiveSessions();
+    const ph = await this.projDir.getDirectoryHandle(dirName);
+    const list = [];
+    for await (const [fname, fh] of ph.entries()) {
+      if (!fname.endsWith('.jsonl')) continue;
+      const file = await fh.getFile();
+      let title = null, lastPrompt = null, firstUserText = null, sessionId = null;
+      let firstTs = null, lastTs = null;
+      let inTokens = 0, outTokens = 0, cacheIn = 0, cacheCreate = 0;
+      let userCount = 0, assistantCount = 0;
+      try {
+        const txt = await file.text();
+        for (const raw of txt.split('\n')) {
+          if (!raw.trim()) continue;
+          let r;
+          try { r = JSON.parse(raw); } catch { continue; }
+          if (!firstTs && r.timestamp) firstTs = r.timestamp;
+          if (r.timestamp) lastTs = r.timestamp;
+          if (!sessionId && r.sessionId) sessionId = r.sessionId;
+          if (r.type === 'ai-title' && r.aiTitle) title = r.aiTitle;
+          if (r.type === 'last-prompt' && r.lastPrompt) lastPrompt = r.lastPrompt;
+          if (r.type === 'user') {
+            userCount++;
+            if (!firstUserText) firstUserText = extractText(r.message?.content);
+          }
+          if (r.type === 'assistant') {
+            assistantCount++;
+            const u = r.message?.usage;
+            if (u) {
+              inTokens     += u.input_tokens || 0;
+              outTokens    += u.output_tokens || 0;
+              cacheIn      += u.cache_read_input_tokens || 0;
+              cacheCreate  += u.cache_creation_input_tokens || 0;
+            }
+          }
+        }
+      } catch {}
+      const displayTitle =
+        title ||
+        (firstUserText ? firstUserText.slice(0, 100) : null) ||
+        (lastPrompt ? lastPrompt.slice(0, 100) : null) ||
+        fname;
+      list.push({
+        fileName: fname,
+        displayTitle,
+        size: file.size,
+        lastModified: file.lastModified,
+        firstTs, lastTs,
+        inTokens, outTokens, cacheIn, cacheCreate,
+        userCount, assistantCount,
+        sessionId,
+        isActive: sessionId ? active.has(sessionId) : false,
+        isAgent: fname.startsWith('agent-'),
+      });
+    }
+    list.sort((a, b) => b.lastModified - a.lastModified);
+    return list;
+  },
+
+  async loadMessages(dirName, fileName) {
+    const ph = await this.projDir.getDirectoryHandle(dirName);
+    const fh = await ph.getFileHandle(fileName);
+    const txt = await (await fh.getFile()).text();
+    const msgs = [];
+    for (const raw of txt.split('\n')) {
+      if (!raw.trim()) continue;
+      try {
+        const r = JSON.parse(raw);
+        if (r.type === 'user' || r.type === 'assistant') msgs.push(r);
+      } catch {}
+    }
+    return msgs;
+  },
+
+  async rename(dirName, oldName, newName) {
+    if (!newName.endsWith('.jsonl')) newName += '.jsonl';
+    const ph = await this.projDir.getDirectoryHandle(dirName);
+    const oldFh = await ph.getFileHandle(oldName);
+    const buf = await (await oldFh.getFile()).arrayBuffer();
+    const newFh = await ph.getFileHandle(newName, { create: true });
+    const w = await newFh.createWritable();
+    await w.write(buf);
+    await w.close();
+    await ph.removeEntry(oldName);
+    return newName;
+  },
+
+  // ── Recycle bin (soft delete) ────────────────────────────────────
+  // The File System Access API can't reach the OS recycle bin, so we keep
+  // our own: deleted files move to projects/.trash/ with a manifest that
+  // records where they came from, so they can be restored or purged later.
+  async trashDir() {
+    return await this.projDir.getDirectoryHandle(Store.TRASH_DIR, { create: true });
+  },
+
+  async readManifest() {
+    try {
+      const td = await this.trashDir();
+      const fh = await td.getFileHandle(Store.MANIFEST, { create: false });
+      const txt = await (await fh.getFile()).text();
+      return JSON.parse(txt);
+    } catch { return []; }
+  },
+
+  async writeManifest(arr) {
+    const td = await this.trashDir();
+    const fh = await td.getFileHandle(Store.MANIFEST, { create: true });
+    const w = await fh.createWritable();
+    await w.write(JSON.stringify(arr, null, 2));
+    await w.close();
+  },
+
+  // Move a session file into the recycle bin
+  async delete(dirName, fileName, meta = {}) {
+    const ph = await this.projDir.getDirectoryHandle(dirName);
+    const buf = await (await (await ph.getFileHandle(fileName)).getFile()).arrayBuffer();
+    const td = await this.trashDir();
+    // Unique stored name to avoid collisions across projects
+    const trashName = Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 6) + '.jsonl';
+    const tfh = await td.getFileHandle(trashName, { create: true });
+    const w = await tfh.createWritable();
+    await w.write(buf);
+    await w.close();
+    await ph.removeEntry(fileName);
+    const manifest = await this.readManifest();
+    manifest.unshift({
+      trashName,
+      origDir: dirName,
+      origName: fileName,
+      title: meta.title || fileName,
+      project: meta.project || dirName,
+      size: buf.byteLength,
+      deletedAt: Date.now(),
+    });
+    await this.writeManifest(manifest);
+  },
+
+  async listTrash() {
+    return await this.readManifest();
+  },
+
+  // Restore a trashed file back to its original project/filename
+  async restoreTrash(trashName) {
+    const manifest = await this.readManifest();
+    const entry = manifest.find(e => e.trashName === trashName);
+    if (!entry) return;
+    const td = await this.trashDir();
+    const buf = await (await (await td.getFileHandle(trashName)).getFile()).arrayBuffer();
+    const ph = await this.projDir.getDirectoryHandle(entry.origDir, { create: true });
+    // Avoid clobbering an existing file with the same name
+    let target = entry.origName;
+    try { await ph.getFileHandle(target, { create: false }); target = target.replace(/\.jsonl$/, '') + '-restored.jsonl'; } catch {}
+    const fh = await ph.getFileHandle(target, { create: true });
+    const w = await fh.createWritable();
+    await w.write(buf);
+    await w.close();
+    await td.removeEntry(trashName);
+    await this.writeManifest(manifest.filter(e => e.trashName !== trashName));
+    return { dir: entry.origDir, name: target };
+  },
+
+  // Permanently delete a trashed file
+  async purgeTrash(trashName) {
+    const td = await this.trashDir();
+    try { await td.removeEntry(trashName); } catch {}
+    const manifest = await this.readManifest();
+    await this.writeManifest(manifest.filter(e => e.trashName !== trashName));
+  },
+
+  async emptyTrash() {
+    const manifest = await this.readManifest();
+    const td = await this.trashDir();
+    for (const e of manifest) { try { await td.removeEntry(e.trashName); } catch {} }
+    await this.writeManifest([]);
+  },
+
+  exportMarkdown(messages, title) {
+    let md = `# ${title}\n\n`;
+    md += `> 导出时间：${new Date().toLocaleString('zh-CN')}\n\n---\n\n`;
+    for (const msg of messages) {
+      const role = msg.type === 'user' ? '**User**' : '**Assistant**';
+      const ts = msg.timestamp ? new Date(msg.timestamp).toLocaleString('zh-CN') : '';
+      md += `## ${role}  <small>${ts}</small>\n\n`;
+      const content = msg.message?.content;
+      if (typeof content === 'string') {
+        md += content + '\n\n';
+      } else if (Array.isArray(content)) {
+        for (const blk of content) {
+          if (blk.type === 'text') md += blk.text + '\n\n';
+          else if (blk.type === 'tool_use') {
+            md += `\`\`\`\n[Tool: ${blk.name}]\n${JSON.stringify(blk.input, null, 2)}\n\`\`\`\n\n`;
+          }
+        }
+      }
+      md += '---\n\n';
+    }
+    const blob = new Blob([md], { type: 'text/markdown;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = (title.replace(/[^一-龥\w\s-]/g, '').trim().slice(0, 60) || 'session') + '.md';
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  },
+
+  async searchAll(query) {
+    const q = query.toLowerCase();
+    const results = [];
+    for await (const [dirName, dirHandle] of this.projDir.entries()) {
+      if (dirHandle.kind !== 'directory') continue;
+      for await (const [fname, fh] of dirHandle.entries()) {
+        if (!fname.endsWith('.jsonl')) continue;
+        try {
+          const txt = await (await fh.getFile()).text();
+          if (!txt.toLowerCase().includes(q)) continue;
+          let title = null, firstUser = null, excerpt = '', found = false;
+          for (const raw of txt.split('\n')) {
+            if (!raw.trim()) continue;
+            try {
+              const r = JSON.parse(raw);
+              if (r.type === 'ai-title' && r.aiTitle) title = r.aiTitle;
+              if (!found && (r.type === 'user' || r.type === 'assistant')) {
+                const text = extractText(r.message?.content);
+                if (r.type === 'user' && !firstUser) firstUser = text;
+                if (text.toLowerCase().includes(q)) {
+                  found = true;
+                  const idx = text.toLowerCase().indexOf(q);
+                  const start = Math.max(0, idx - 60);
+                  const end = Math.min(text.length, idx + query.length + 60);
+                  excerpt = text.slice(start, end);
+                }
+              }
+            } catch {}
+          }
+          if (found) results.push({
+            dirName, fileName: fname,
+            title: title || (firstUser ? firstUser.slice(0, 80) : fname),
+            excerpt,
+          });
+        } catch {}
+      }
+    }
+    return results;
+  },
+};
+
+// ══════════════════════════════════════════════════════════════════
+//  STATE
+// ══════════════════════════════════════════════════════════════════
+const S = {
+  projects: [],
+  sessions: [],
+  allSessions: [],   // unfiltered
+  messages: [],
+  activeProj: null,
+  activeSess: null,  // { dirName, fileName, displayTitle, ... }
+  renameTarget: null,
+  deleteTarget: null,
+};
+
+// ══════════════════════════════════════════════════════════════════
+//  UTILS
+// ══════════════════════════════════════════════════════════════════
+function fmtSize(b) {
+  if (b < 1024) return b + 'B';
+  if (b < 1024*1024) return (b/1024).toFixed(1) + 'KB';
+  return (b/1024/1024).toFixed(1) + 'MB';
+}
+function fmtTime(ts) {
+  if (!ts) return '';
+  const d = new Date(ts), now = new Date();
+  const diff = now - d;
+  const m = Math.floor(diff/60000);
+  if (m < 1)  return '刚刚';
+  if (m < 60) return m + '分钟前';
+  const h = Math.floor(m/60);
+  if (h < 24) return h + '小时前';
+  const days = Math.floor(h/24);
+  if (days < 7) return days + '天前';
+  return d.toLocaleDateString('zh-CN', { month:'short', day:'numeric' });
+}
+function fmtTok(n) {
+  if (!n) return '0';
+  return n >= 1000 ? (n/1000).toFixed(1) + 'k' : String(n);
+}
+function escHtml(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+// Pull plain text out of a message.content (string | array of blocks)
+function extractText(content) {
+  if (!content) return '';
+  if (typeof content === 'string') return content;
+  if (Array.isArray(content)) {
+    return content.filter(b => b.type === 'text').map(b => b.text || '').join(' ').trim();
+  }
+  return '';
+}
+
+// Lightweight markdown → HTML
+function md2html(text) {
+  if (!text) return '';
+  let s = escHtml(text);
+  // fenced code blocks
+  s = s.replace(/```(\w*)\n?([\s\S]*?)```/g, (_, lang, code) =>
+    `<pre><code class="lang-${escHtml(lang)}">${code}</code></pre>`);
+  // inline code
+  s = s.replace(/`([^`]+)`/g, '<code>$1</code>');
+  // bold
+  s = s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  s = s.replace(/__([^_]+)__/g, '<strong>$1</strong>');
+  // italic
+  s = s.replace(/\*([^*\n]+)\*/g, '<em>$1</em>');
+  // headers
+  s = s.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+  s = s.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+  s = s.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+  // hr
+  s = s.replace(/^---+$/gm, '<hr>');
+  // blockquote
+  s = s.replace(/^&gt; (.+)$/gm, '<blockquote>$1</blockquote>');
+  // lists (simple)
+  s = s.replace(/^[*\-] (.+)$/gm, '<li>$1</li>');
+  s = s.replace(/(<li>.*<\/li>\n?)+/gs, m => '<ul>' + m + '</ul>');
+  // line breaks
+  s = s.replace(/\n/g, '<br>');
+  // clean up inside pre tags (undo <br> we just added)
+  s = s.replace(/<pre>([\s\S]*?)<\/pre>/g, (_, inner) =>
+    '<pre>' + inner.replace(/<br>/g, '\n') + '</pre>');
+  return s;
+}
+
+function renderBlockContent(content) {
+  if (!content) return '';
+  if (typeof content === 'string') return `<div class="txt">${md2html(content)}</div>`;
+  if (!Array.isArray(content)) return '';
+
+  return content.map(blk => {
+    if (blk.type === 'text') {
+      return `<div class="txt">${md2html(blk.text)}</div>`;
+    }
+    if (blk.type === 'thinking') {
+      const id = 'th' + Math.random().toString(36).slice(2,8);
+      const think = (blk.thinking || '').trim();
+      if (!think) return '';
+      return `<div class="tool-block think-block">
+        <div class="tool-hdr" onclick="toggleTool(this,'${id}')">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a7 7 0 0 0-7 7c0 2.4 1.2 4.5 3 5.7V17a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-2.3c1.8-1.2 3-3.3 3-5.7a7 7 0 0 0-7-7z"/><path d="M9 21h6"/></svg>
+          <span style="color:#a855f7;font-weight:600;">Thinking</span>
+          <span class="tool-arr">▶</span>
+        </div>
+        <div class="tool-body think-body" id="${id}">${escHtml(think)}</div>
+      </div>`;
+    }
+    if (blk.type === 'tool_use') {
+      const id = 'tu' + Math.random().toString(36).slice(2,8);
+      const args = JSON.stringify(blk.input, null, 2);
+      return `<div class="tool-block">
+        <div class="tool-hdr" onclick="toggleTool(this,'${id}')">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+          <span class="tool-nm">${escHtml(blk.name)}</span>
+          <span class="tool-arr">▶</span>
+        </div>
+        <div class="tool-body" id="${id}">${escHtml(args)}</div>
+      </div>`;
+    }
+    if (blk.type === 'tool_result') {
+      const id = 'tr' + Math.random().toString(36).slice(2,8);
+      const resultText = Array.isArray(blk.content)
+        ? blk.content.filter(c => c.type === 'text').map(c => c.text).join('\n')
+        : typeof blk.content === 'string' ? blk.content : '';
+      if (!resultText.trim()) return '';
+      return `<div class="tool-block">
+        <div class="tool-hdr tool-result-hdr" onclick="toggleTool(this,'${id}')">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+          <span style="color:var(--text-2)">Tool Result</span>
+          <span class="tool-arr">▶</span>
+        </div>
+        <div class="tool-body" id="${id}">${escHtml(resultText)}</div>
+      </div>`;
+    }
+    if (blk.type === 'image') {
+      return `<div style="font-size:11px;color:var(--text-3);padding:4px 0;">[Image]</div>`;
+    }
+    return '';
+  }).join('');
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  RENDER
+// ══════════════════════════════════════════════════════════════════
+function renderProjects() {
+  const el = document.getElementById('projList');
+  if (!S.projects.length) {
+    el.innerHTML = '<div class="empty" style="padding-top:32px;"><p>未找到项目目录</p></div>';
+    return;
+  }
+  el.innerHTML = S.projects.map(p => `
+    <div class="proj-item${S.activeProj?.dirName === p.dirName ? ' active' : ''}"
+         data-dir="${escHtml(p.dirName)}">
+      <span class="proj-name" title="${escHtml(p.cwd)}">${escHtml(p.displayName)}</span>
+      <span class="proj-cnt">${p.count}</span>
+    </div>`).join('');
+}
+
+function renderSessions() {
+  const el = document.getElementById('sessList');
+  if (!S.sessions.length) {
+    el.innerHTML = '<div class="empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg><p>暂无会话</p></div>';
+    return;
+  }
+  const filter = document.getElementById('sessFilter').value.toLowerCase();
+  const list = filter ? S.sessions.filter(s => s.displayTitle.toLowerCase().includes(filter)) : S.sessions;
+  if (!list.length) {
+    el.innerHTML = '<div class="empty"><p>无匹配会话</p></div>';
+    return;
+  }
+  el.innerHTML = list.map(s => {
+    const isActive = S.activeSess?.fileName === s.fileName;
+    const totalTok = s.outTokens + s.inTokens + s.cacheIn;
+    return `<div class="sess-item${isActive ? ' active' : ''}" data-file="${escHtml(s.fileName)}">
+      <div class="sess-title">${escHtml(s.displayTitle)}</div>
+      <div class="sess-meta">
+        <span class="meta-tag">${fmtTime(s.lastModified)}</span>
+        <span class="sep">·</span>
+        <span class="meta-tag">${s.userCount}轮</span>
+        <span class="sep">·</span>
+        <span class="meta-tag">${fmtSize(s.size)}</span>
+        ${s.isActive  ? '<span class="badge badge-active">● 活跃</span>' : ''}
+        ${s.isAgent   ? '<span class="badge badge-agent">Agent</span>' : ''}
+      </div>
+      <div class="sess-actions">
+        <button class="act-btn" data-act="rename" title="重命名">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        </button>
+        <button class="act-btn del" data-act="delete" title="删除">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+        </button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderChat(messages) {
+  const sess = S.activeSess;
+  document.getElementById('chatWelcome').style.display = 'none';
+  const cv = document.getElementById('chatView');
+  cv.style.display = 'flex';
+
+  document.getElementById('chatTitle').textContent = sess.displayTitle;
+
+  const totalOut = sess.outTokens, totalIn = sess.inTokens;
+  const cacheIn = sess.cacheIn, cacheCreate = sess.cacheCreate;
+  document.getElementById('chatStats').innerHTML = `
+    <span class="chat-stat">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      ${sess.userCount} 轮
+    </span>
+    <span class="chat-stat">↑ ${fmtTok(totalIn)}</span>
+    <span class="chat-stat">↓ ${fmtTok(totalOut)}</span>
+    ${cacheIn ? `<span class="chat-stat" title="缓存读取">⚡ ${fmtTok(cacheIn)}</span>` : ''}
+  `;
+
+  const msgsEl = document.getElementById('chatMsgs');
+  if (!messages.length) {
+    msgsEl.innerHTML = '<div class="empty"><p>无消息记录</p></div>';
+    document.getElementById('statsBar').innerHTML = '';
+    return;
+  }
+
+  // Normalize message.content (string | array of blocks) → array of blocks
+  const norm = c => typeof c === 'string'
+    ? (c.trim() ? [{ type:'text', text:c }] : [])
+    : Array.isArray(c) ? c : [];
+
+  // Group records into display items. A single assistant turn is split across
+  // multiple records sharing the same message.id (thinking / text / tool_use) —
+  // merge them into one bubble. User records that are purely tool_result become
+  // their own left-aligned card instead of a "You" bubble.
+  const items = [];
+  for (const msg of messages) {
+    const blocks = norm(msg.message?.content);
+    if (!blocks.length) continue;
+    if (msg.type === 'assistant') {
+      const mid = msg.message?.id;
+      const prev = items[items.length - 1];
+      if (prev && prev.kind === 'assistant' && mid && prev.mid === mid) {
+        prev.blocks.push(...blocks);
+        if (msg.message?.usage) prev.usage = msg.message.usage;
+        prev.timestamp = msg.timestamp || prev.timestamp;
+      } else {
+        items.push({ kind:'assistant', mid, blocks:[...blocks], timestamp:msg.timestamp, usage:msg.message?.usage });
+      }
+    } else { // user
+      const isToolResult = blocks.every(b => b.type === 'tool_result');
+      items.push({ kind: isToolResult ? 'toolresult' : 'user', blocks:[...blocks], timestamp:msg.timestamp });
+    }
+  }
+
+  msgsEl.innerHTML = items.map(it => {
+    const html = renderBlockContent(it.blocks);
+    if (!html.trim()) return '';
+    const ts = it.timestamp ? fmtTime(it.timestamp) : '';
+    if (it.kind === 'toolresult') {
+      return `<div class="msg-wrap toolresult">
+        <div class="msg-role">Tool Result</div>
+        <div class="msg-bubble tr-bubble">${html}</div>
+        <div class="msg-footer"><span>${ts}</span></div>
+      </div>`;
+    }
+    const isUser = it.kind === 'user';
+    const roleLabel = isUser ? 'You' : 'Claude';
+    const tokInfo = it.usage ? `${fmtTok(it.usage.output_tokens||0)} tok` : '';
+    return `<div class="msg-wrap ${isUser ? 'user' : 'assistant'}">
+      <div class="msg-role">${roleLabel}</div>
+      <div class="msg-bubble">${html}</div>
+      <div class="msg-footer">
+        <span>${ts}</span>
+        ${tokInfo ? `<span>${tokInfo}</span>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+
+  // Stats bar
+  document.getElementById('statsBar').innerHTML = `
+    <span>📁 ${escHtml(S.activeProj?.displayName || '')}</span>
+    <span>·</span>
+    <span>输入 ${fmtTok(totalIn)} tok</span>
+    <span>输出 ${fmtTok(totalOut)} tok</span>
+    ${cacheIn ? `<span>缓存读 ${fmtTok(cacheIn)} tok</span>` : ''}
+    ${cacheCreate ? `<span>缓存写 ${fmtTok(cacheCreate)} tok</span>` : ''}
+    <span>文件 ${fmtSize(sess.size)}</span>
+    <span style="margin-left:auto;font-family:monospace;font-size:10px;color:var(--text-3);">${escHtml(sess.fileName)}</span>
+  `;
+}
+
+function setLoading(containerId, msg) {
+  document.getElementById(containerId).innerHTML =
+    `<div class="loading"><div class="spinner"></div>${msg}</div>`;
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  ACTIONS
+// ══════════════════════════════════════════════════════════════════
+async function openDirectory() {
+  if (!('showDirectoryPicker' in window)) {
+    alert('此功能需要 Chrome 或 Edge 86+ 浏览器。');
+    return;
+  }
+  try {
+    await Store.open();
+    setLoading('projList', '加载项目…');
+    S.projects = await Store.listProjects();
+    renderProjects();
+    document.getElementById('btnTrash').style.display = 'inline-flex';
+    refreshTrashCount();
+    if (S.projects.length === 1) selectProject(S.projects[0].dirName);
+  } catch (e) {
+    if (e.name !== 'AbortError') alert('打开失败：' + e.message);
+  }
+}
+
+async function refreshTrashCount() {
+  try {
+    const n = (await Store.listTrash()).length;
+    const badge = document.getElementById('trashCount');
+    badge.textContent = n;
+    badge.style.display = n ? 'inline-flex' : 'none';
+  } catch {}
+}
+
+async function selectProject(dirName) {
+  S.activeProj = S.projects.find(p => p.dirName === dirName);
+  S.activeSess = null;
+  S.sessions = [];
+  S.allSessions = [];
+  renderProjects();
+  setLoading('sessList', '加载会话…');
+  document.getElementById('chatWelcome').style.display = 'flex';
+  document.getElementById('chatView').style.display = 'none';
+  try {
+    S.allSessions = await Store.listSessions(dirName);
+    S.sessions = S.allSessions;
+    renderSessions();
+  } catch (e) {
+    document.getElementById('sessList').innerHTML =
+      `<div class="empty"><p>加载失败：${escHtml(e.message)}</p></div>`;
+  }
+}
+
+async function selectSession(fileName) {
+  S.activeSess = S.sessions.find(s => s.fileName === fileName)
+    || S.allSessions.find(s => s.fileName === fileName);
+  if (!S.activeSess) return;
+  renderSessions();
+  const msgsEl = document.getElementById('chatMsgs');
+  document.getElementById('chatWelcome').style.display = 'none';
+  document.getElementById('chatView').style.display = 'flex';
+  msgsEl.innerHTML = '<div class="loading"><div class="spinner"></div>加载消息…</div>';
+  try {
+    S.messages = await Store.loadMessages(S.activeProj.dirName, fileName);
+    renderChat(S.messages);
+    // Scroll to top
+    msgsEl.scrollTop = 0;
+  } catch (e) {
+    msgsEl.innerHTML = `<div class="empty"><p>加载失败：${escHtml(e.message)}</p></div>`;
+  }
+}
+
+function filterSessions() {
+  renderSessions();
+}
+
+function toggleTool(hdrEl, bodyId) {
+  const body = document.getElementById(bodyId);
+  const isOpen = body.classList.toggle('vis');
+  hdrEl.classList.toggle('open', isOpen);
+}
+
+// ── Rename ──
+function openRename(fileName) {
+  S.renameTarget = { fileName };
+  const nameWithout = fileName.replace(/\.jsonl$/, '');
+  document.getElementById('renameInput').value = nameWithout;
+  document.getElementById('renameOld').textContent = fileName;
+  openModal('renameModal');
+  setTimeout(() => { document.getElementById('renameInput').select(); }, 50);
+}
+
+async function doRename() {
+  const newName = document.getElementById('renameInput').value.trim();
+  if (!newName) return;
+  try {
+    const result = await Store.rename(S.activeProj.dirName, S.renameTarget.fileName, newName);
+    closeModal('renameModal');
+    // Update session list
+    const idx = S.allSessions.findIndex(s => s.fileName === S.renameTarget.fileName);
+    if (idx >= 0) {
+      S.allSessions[idx].fileName = result;
+      if (S.activeSess?.fileName === S.renameTarget.fileName) S.activeSess.fileName = result;
+    }
+    S.sessions = S.allSessions;
+    renderSessions();
+  } catch (e) {
+    alert('重命名失败：' + e.message);
+  }
+}
+
+// ── Delete ──
+function openDelete(fileName) {
+  const sess = S.allSessions.find(s => s.fileName === fileName);
+  S.deleteTarget = { fileName };
+  document.getElementById('deleteTitle').textContent = sess?.displayTitle || fileName;
+  openModal('deleteModal');
+}
+
+async function doDelete() {
+  try {
+    const sess = S.allSessions.find(s => s.fileName === S.deleteTarget.fileName);
+    await Store.delete(S.activeProj.dirName, S.deleteTarget.fileName, {
+      title: sess?.displayTitle,
+      project: S.activeProj.displayName,
+    });
+    closeModal('deleteModal');
+    S.allSessions = S.allSessions.filter(s => s.fileName !== S.deleteTarget.fileName);
+    S.sessions = S.allSessions;
+    if (S.activeSess?.fileName === S.deleteTarget.fileName) {
+      S.activeSess = null;
+      document.getElementById('chatWelcome').style.display = 'flex';
+      document.getElementById('chatView').style.display = 'none';
+    }
+    // Update project count
+    if (S.activeProj) S.activeProj.count = Math.max(0, S.activeProj.count - 1);
+    renderProjects();
+    renderSessions();
+    refreshTrashCount();
+  } catch (e) {
+    alert('删除失败：' + e.message);
+  }
+}
+
+// ── Export ──
+function doExport() {
+  if (!S.activeSess || !S.messages.length) return;
+  Store.exportMarkdown(S.messages, S.activeSess.displayTitle);
+}
+
+// ── Recycle bin ──
+async function openTrash() {
+  openModal('trashModal');
+  document.getElementById('trashList').innerHTML = '<div class="loading"><div class="spinner"></div>加载…</div>';
+  await renderTrash();
+}
+
+async function renderTrash() {
+  const items = await Store.listTrash();
+  const el = document.getElementById('trashList');
+  if (!items.length) {
+    el.innerHTML = '<div class="trash-empty">回收站为空</div>';
+    return;
+  }
+  el.innerHTML = items.map(it => `
+    <div class="trash-item" data-trash="${escHtml(it.trashName)}">
+      <div class="trash-info">
+        <div class="trash-title">${escHtml(it.title)}</div>
+        <div class="trash-meta">${escHtml(it.project || it.origDir)} · ${fmtSize(it.size||0)} · 删除于 ${fmtTime(it.deletedAt)}</div>
+      </div>
+      <div class="trash-acts">
+        <button class="btn btn-ghost" data-tact="restore" style="padding:4px 10px;font-size:12px;">还原</button>
+        <button class="btn btn-danger" data-tact="purge" style="padding:4px 10px;font-size:12px;">彻底删除</button>
+      </div>
+    </div>`).join('');
+}
+
+async function trashRestore(trashName) {
+  try {
+    const res = await Store.restoreTrash(trashName);
+    await renderTrash();
+    refreshTrashCount();
+    // If the restored file belongs to the currently open project, refresh its list
+    if (res && S.activeProj?.dirName === res.dir) {
+      S.allSessions = await Store.listSessions(S.activeProj.dirName);
+      S.sessions = S.allSessions;
+      renderSessions();
+    }
+    // Bump project count if listed
+    const proj = res && S.projects.find(p => p.dirName === res.dir);
+    if (proj) { proj.count += 1; renderProjects(); }
+  } catch (e) {
+    alert('还原失败：' + e.message);
+  }
+}
+
+async function trashPurge(trashName) {
+  if (!confirm('彻底删除后无法恢复，确定吗？')) return;
+  try {
+    await Store.purgeTrash(trashName);
+    await renderTrash();
+    refreshTrashCount();
+  } catch (e) {
+    alert('删除失败：' + e.message);
+  }
+}
+
+async function emptyTrash() {
+  const items = await Store.listTrash();
+  if (!items.length) return;
+  if (!confirm(`确定彻底清空回收站中的 ${items.length} 个文件吗？此操作无法恢复。`)) return;
+  try {
+    await Store.emptyTrash();
+    await renderTrash();
+    refreshTrashCount();
+  } catch (e) {
+    alert('清空失败：' + e.message);
+  }
+}
+
+// ── Global search ──
+let srchTimer = null;
+function onGlobalSearch(e) {
+  clearTimeout(srchTimer);
+  const q = e.target.value.trim();
+  if (!q) { closeSrch(); return; }
+  srchTimer = setTimeout(() => runGlobalSearch(q), 400);
+}
+
+async function runGlobalSearch(q) {
+  if (!Store.projDir) { alert('请先打开 .claude 目录'); return; }
+  const overlay = document.getElementById('srchOverlay');
+  overlay.classList.add('vis');
+  document.getElementById('srchResults').innerHTML = '<div class="loading"><div class="spinner"></div>搜索中…</div>';
+  document.getElementById('srchInfo').textContent = `搜索 "${q}"`;
+  try {
+    const results = await Store.searchAll(q);
+    if (!results.length) {
+      document.getElementById('srchResults').innerHTML = `<div class="srch-none">未找到包含 "${escHtml(q)}" 的会话</div>`;
+      return;
+    }
+    document.getElementById('srchInfo').textContent = `"${q}" — 找到 ${results.length} 个结果`;
+    const qRe = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+    document.getElementById('srchResults').innerHTML = results.map(r => {
+      const excerptHl = escHtml(r.excerpt).replace(qRe, m => `<mark>${escHtml(m)}</mark>`);
+      const proj = S.projects.find(p => p.dirName === r.dirName);
+      return `<div class="srch-item" data-dir="${escHtml(r.dirName)}" data-file="${escHtml(r.fileName)}">
+        <div class="srch-proj">${escHtml(proj?.displayName || r.dirName)}</div>
+        <div class="srch-title">${escHtml(r.title)}</div>
+        <div class="srch-excerpt">${excerptHl}</div>
+      </div>`;
+    }).join('');
+  } catch (e) {
+    document.getElementById('srchResults').innerHTML = `<div class="srch-none">搜索出错：${escHtml(e.message)}</div>`;
+  }
+}
+
+async function jumpToResult(dirName, fileName) {
+  closeSrch();
+  if (S.activeProj?.dirName !== dirName) await selectProject(dirName);
+  await selectSession(fileName);
+}
+
+function closeSrch() {
+  document.getElementById('srchOverlay').classList.remove('vis');
+}
+
+// ── Modal helpers ──
+function openModal(id) { document.getElementById(id).classList.add('vis'); }
+function closeModal(id) { document.getElementById(id).classList.remove('vis'); }
+
+// ══════════════════════════════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════════════════════════════
+document.getElementById('btnOpen').addEventListener('click', openDirectory);
+document.getElementById('btnExport').addEventListener('click', doExport);
+document.getElementById('globalSearch').addEventListener('input', onGlobalSearch);
+document.getElementById('btnTrash').addEventListener('click', openTrash);
+document.getElementById('btnEmptyTrash').addEventListener('click', emptyTrash);
+
+// Event delegation — trash list (restore / purge)
+document.getElementById('trashList').addEventListener('click', e => {
+  const item = e.target.closest('.trash-item');
+  if (!item) return;
+  const trashName = item.dataset.trash;
+  const btn = e.target.closest('[data-tact]');
+  if (!btn) return;
+  if (btn.dataset.tact === 'restore') trashRestore(trashName);
+  else if (btn.dataset.tact === 'purge') trashPurge(trashName);
+});
+
+// Event delegation — projects
+document.getElementById('projList').addEventListener('click', e => {
+  const item = e.target.closest('.proj-item');
+  if (item) selectProject(item.dataset.dir);
+});
+
+// Event delegation — sessions (row click + action buttons)
+document.getElementById('sessList').addEventListener('click', e => {
+  const item = e.target.closest('.sess-item');
+  if (!item) return;
+  const fileName = item.dataset.file;
+  const actBtn = e.target.closest('.act-btn');
+  if (actBtn) {
+    e.stopPropagation();
+    if (actBtn.dataset.act === 'rename') openRename(fileName);
+    else if (actBtn.dataset.act === 'delete') openDelete(fileName);
+    return;
+  }
+  selectSession(fileName);
+});
+
+// Event delegation — search results
+document.getElementById('srchResults').addEventListener('click', e => {
+  const item = e.target.closest('.srch-item');
+  if (item) jumpToResult(item.dataset.dir, item.dataset.file);
+});
+
+// Close search overlay when clicking outside
+document.addEventListener('click', e => {
+  const overlay = document.getElementById('srchOverlay');
+  if (overlay.classList.contains('vis') && !overlay.contains(e.target) && e.target.id !== 'globalSearch') {
+    closeSrch();
+  }
+});
+
+// Keyboard shortcuts
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    closeSrch();
+    closeModal('renameModal');
+    closeModal('deleteModal');
+    closeModal('trashModal');
+  }
+  if (e.key === 'Enter' && document.getElementById('renameModal').classList.contains('vis')) {
+    doRename();
+  }
+});
+
+// Handle rename input Enter
+document.getElementById('renameInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') doRename();
+});
+</script>
+</body>
+</html>
